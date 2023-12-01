@@ -1,0 +1,1342 @@
+# AdventOfCode-2023
+
+## Day 1 - Part A
+
+```elixir
+defmodule Aoc1 do
+  def example_input do
+    """
+      1abc2
+      pqr3stu8vwx
+      a1b2c3d4e5f
+      treb7uchet
+    """
+    |> String.trim()
+    |> String.split("\n")
+  end
+
+  def puzzle_input do
+    File.stream!("#{__DIR__}/1.txt")
+  end
+
+  def first_and_last(enum) do
+    enum
+    |> Stream.map(&Regex.scan(~r/\d/, &1))
+    |> Stream.map(&[hd(&1), Enum.reverse(&1) |> hd()])
+    |> Stream.map(&Enum.join/1)
+    |> Stream.map(&String.to_integer/1)
+  end
+
+  def solve(input \\ example_input()) do
+    input
+    |> first_and_last()
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Aoc1, <<70, 79, 82, 49, 0, 0, 13, ...>>, {:solve, 1}}
+```
+
+```elixir
+Aoc1.solve()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+142
+```
+
+```elixir
+Aoc1.solve(Aoc1.puzzle_input())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+55130
+```
+
+## Day 1 - Part B
+
+```elixir
+defmodule Scanner do
+  def render(str, list) do
+    list
+    |> Enum.reverse()
+    |> Enum.uniq()
+    |> Enum.map(fn {idx, length} -> String.slice(str, idx, length) end)
+  end
+
+  def scan(str, acc \\ [], offset \\ 0) do
+    if offset > String.length(str) do
+      render(str, acc)
+    else
+      case Regex.run(Aoc2.regex(), str, return: :index, offset: offset) do
+        nil ->
+          render(str, acc)
+
+        [{start, _length} = match] ->
+          scan(str, [match | acc], start + 1)
+      end
+    end
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Scanner, <<70, 79, 82, 49, 0, 0, 11, ...>>, {:scan, 3}}
+```
+
+```elixir
+defmodule Aoc2 do
+  def example_input do
+    """
+      two1nine
+      eightwothree
+      abcone2threexyz
+      xtwone3four
+      4nineeightseven2
+      zoneight234
+      7pqrstsixteen
+    """
+    |> prep_example_input()
+  end
+
+  def prep_example_input(str) do
+    str
+    |> String.trim()
+    |> String.split("\n")
+  end
+
+  def puzzle_input do
+    File.stream!("#{__DIR__}/1.txt")
+  end
+
+  def first_and_last(enum) do
+    enum
+    |> Stream.map(&Scanner.scan/1)
+    |> Enum.to_list()
+    |> IO.inspect(limit: :infinity)
+    |> Stream.map(&parse_list_of_maybe_numbers/1)
+    |> Stream.map(
+      &case &1 do
+        [n] -> [n, n]
+        [a, b] -> [a, b]
+        a -> [hd(a), Enum.reverse(a) |> hd()]
+      end
+    )
+    |> Stream.map(&Enum.join/1)
+    |> Stream.map(&String.to_integer/1)
+  end
+
+  def number_str_map do
+    %{
+      "one" => "1",
+      "two" => "2",
+      "three" => "3",
+      "four" => "4",
+      "five" => "5",
+      "six" => "6",
+      "seven" => "7",
+      "eight" => "8",
+      "nine" => "9"
+    }
+  end
+
+  @doc """
+  ## Examples
+  iex>Aoc2.parse_list_of_maybe_numbers(~w[1 two 3])
+  ~w[1 2 3]
+
+  iex>Aoc2.parse_list_of_maybe_numbers(~w[three nine seven])
+  ~w[3 9 7]
+
+  iex>Aoc2.parse_list_of_maybe_numbers(~w[eight])
+  ~w[8]
+
+  iex>Aoc2.parse_list_of_maybe_numbers(~w[one one one one one one one one])
+  ~w[1 1 1 1 1 1 1 1]
+  """
+  def parse_list_of_maybe_numbers(enum) do
+    enum
+    |> Enum.map(&to_number_str/1)
+  end
+
+  @doc """
+  ## Examples
+  iex>Aoc2.to_number_str("one")
+  "1"
+
+  iex>Aoc2.to_number_str("1")
+  "1"
+  """
+  def to_number_str(str) do
+    case number_str_map()[str] do
+      nil -> str
+      n -> n
+    end
+  end
+
+  @doc """
+  ## Examples
+  iex>Aoc2.scan_numbers("1one1")
+  ["1", "one", "1"]
+
+  iex>Aoc2.scan_numbers("nine")
+  ["nine"]
+
+  iex>Aoc2.scan_numbers("helloworld")
+  []
+  """
+  def scan_numbers(str) do
+    Regex.scan(regex(), str) |> List.flatten()
+  end
+
+  def regex do
+    Map.keys(Aoc2.number_str_map())
+    |> Enum.join("|")
+    |> then(&~r/\d|#{&1}/)
+  end
+
+  def sum(enum) do
+    enum
+    |> Enum.to_list()
+    |> IO.inspect(limit: :infinity)
+    |> Enum.map(fn n -> n end)
+    |> Enum.sum()
+  end
+
+  def solve(input \\ example_input()) do
+    input
+    |> first_and_last()
+    |> sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Aoc2, <<70, 79, 82, 49, 0, 0, 22, ...>>, {:solve, 1}}
+```
+
+```elixir
+defmodule Tests do
+  # 120
+  def input1 do
+    """
+    1one2two3three
+    29
+    seven1eight
+    """
+    |> Aoc2.prep_example_input()
+  end
+
+  # 57
+  def input2 do
+    """
+    1nine
+    twoseven
+    one1
+    """
+    |> Aoc2.prep_example_input()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Tests, <<70, 79, 82, 49, 0, 0, 6, ...>>, {:input2, 0}}
+```
+
+```elixir
+Aoc2.solve()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[
+  ["two", "1", "nine"],
+  ["eight", "two", "three"],
+  ["one", "2", "three"],
+  ["two", "one", "3", "four"],
+  ["4", "nine", "eight", "seven", "2"],
+  ["one", "eight", "2", "3", "4"],
+  ["7", "six"]
+]
+[29, 83, 13, 24, 42, 14, 76]
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+281
+```
+
+```elixir
+Aoc2.solve(Tests.input1())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[["1", "one", "2", "two", "3", "three"], ["2", "9"], ["seven", "1", "eight"]]
+[13, 29, 78]
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+120
+```
+
+```elixir
+Aoc2.solve(Tests.input2())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+[["1", "nine"], ["two", "seven"], ["one", "1"]]
+[19, 27, 11]
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+57
+```
+
+```elixir
+Aoc2.solve(Aoc2.puzzle_input())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+...
+  ["nine", "9", "8", "4", "4"],
+  ["5", "one"],
+  ["eight", "six", "nine", "1", "two", "one"],
+  ["eight", "2", "six", "one", "3", "4"],
+  ["five", "9", "9", "five"],
+  ["seven", "9", "four", "2"],
+  ["4"],
+  ["9", "four"],
+  ["4"],
+  ["4", "1", "4"],
+  ["4", "7", "eight", "one"],
+  ["7", "four"],
+  ["6", "eight", "six", "6", "eight", "3", "nine"],
+  ["one", "six", "5", "five", "7", "six", "1"],
+  ["seven", "5", "nine", "three", "4", "two", "9"],
+  ["four", "8"],
+  ["three", "7", "nine"],
+  ["six", "7", "5", "seven"],
+  ["one", "one", "5", "5", "three", "2"],
+  ["three", "four", "3", "three", "4"],
+  ["six", "3", "5", "7"],
+  ["eight", "4"],
+  ["four", "two", "4", "two", "one"],
+  ["8", "one", "2", "six", "four", "1"],
+  ["eight", "1", "9"],
+  ["seven", "8", "4"],
+  ["one", "3", "4", "6", "eight", "7", "6"],
+  ["nine", "5"],
+  ["5", "6", "two", "one"],
+  ["5", "4", "5", "7", "nine", "two", "seven"],
+  ["4", "eight"],
+  ["three", "4", "7", "6", "8", "five"],
+  ["5", "six", "eight", "one", "nine"],
+  ["seven", "4", "4"],
+  ["9", "9", "one"],
+  ["3", "5", "9", "four", "2"],
+  ["4", "two"],
+  ["9", "seven", "nine", "1", "5", "8"],
+  ["five", "9", "eight", "4", "9"],
+  ["3", "six"],
+  ["six", "9", "five", "five"],
+  ["four", "5", "seven", "three", "two", "one"],
+  ["8", "nine"],
+  ["3", "seven", "1"],
+  ["three", "1", "three", "7", "seven", "4"],
+  ["4"],
+  ["six", "seven", "5"],
+  ["four", "4", "5", "one"],
+  ["2", "3", "1", "8", "8", "4"],
+  ["2"],
+  ["one", "eight", "six", "nine", "6", "five", "seven"],
+  ["6", "six"],
+  ["5"],
+  ["2", "2", "3"],
+  ["six", "4"],
+  ["3", "2", "9", "eight", "one"],
+  ["9", "one", "eight"],
+  ["2", "3", "seven", "3", "four", "7"],
+  ["8", "five", "5", "3", "eight", "three", "five"],
+  ["3", "6"],
+  ["eight", "six", "2"],
+  ["6", "nine", "seven", "seven"],
+  ["2", "one", "9", "8", "three"],
+  ["six", "4"],
+  ["8", "six", "two"],
+  ["6", "two", "9", "8"],
+  ["six", "3", "nine", "7", "eight", "two"],
+  ["six", "eight", "two", "1", "one", "9"],
+  ["one", "8", "1", "six", "8", "six"],
+  ["5", "2", "7", "7"],
+  ["8", "9", "two"],
+  ["one", "five", "1"],
+  ["5", "2", "one", "4"],
+  ["3"],
+  ["4", "3", "three", "7", "4"],
+  ["eight", "8", "six", "eight", "one", "6", "one"],
+  ["six", "6", "nine", "9"],
+  ["eight", "nine", "eight", "3"],
+  ["nine", "nine", "7", "nine"],
+  ["four", "eight", "6", "2"],
+  ["3"],
+  ["2", "6"],
+  ["2", "7", "nine", "7", "4"],
+  ["eight", "one", "3", "1", "one"],
+  ["three", "seven", "7"],
+  ["5", "5", "five"],
+  ["one", "five", "eight", "5", "3"],
+  ["6", "4", "3", "five", "two"],
+  ["one", "9"],
+  ["3", "one", "eight", "6", "4"],
+  ["5", "two", "3", "6", "nine", "2"],
+  ["1", "5", "1"],
+  ["eight", "four", "9"],
+  ["2", "6"],
+  ["seven", "4", "6", "one", "eight"],
+  ["4", "six", "1", "7"],
+  ["four", "6", "8", "four"],
+  ["nine", "one", "2"],
+  ["5", "seven", "one", "6", "five"],
+  ["5", "3", "one", "2", "9", "seven"],
+  ["7", "eight", "seven"],
+  ["seven", "9"],
+  ["3", "9", "two", "5", "6", "six"],
+  ["8", "8", "8", "3", "three"],
+  ["3", "8", "five", "5"],
+  ["six", "7"],
+  ["eight", "3", "3", "5", "nine"],
+  ["9", "3", "four", "eight", "5"],
+  ["6", "one", "4"],
+  ["four", "nine", "8"],
+  ["two", "6", "8", "8", "5"],
+  ["8", "one", "one", "four"],
+  ["nine", "three", "5", "9", "8", "4", "five"],
+  ["7"],
+  ["nine", "one", "1", "nine"],
+  ["8", "two"],
+  ["4", "seven", "two"],
+  ["8", "eight", "9", "nine", "two"],
+  ["six", "8", "5"],
+  ["1", "5", "3"],
+  ["4", "six", "three", "3"],
+  ["four", "one", "8", "five", "seven", "4", "7"],
+  ["seven", "6", "4", "three", "one", "four"],
+  ["9", "two", "six", "4"],
+  ["four", "2", "5", "1"],
+  ["8"],
+  ["3", "two", "2"],
+  ["six", "four", "eight", "9", "3", "eight", "nine"],
+  ["eight", "2", "six", "three"],
+  ["3"],
+  ["6", "two", "3", "two", "2"],
+  ["1", "5", "five", "five", "8", "one"],
+  ["2"],
+  ["seven", "one", "5"],
+  ["4", "2"],
+  ["3", "six", "9", "four", "1", "9", "one", "eight"],
+  ["six", "2", "one"],
+  ["eight", "one", "8", "8"],
+  ["9", "7", "five", "4"],
+  ["seven", "8"],
+  ["five", "four", "seven", "7"],
+  ["eight", "2"],
+  ["6", "five", "three", "4"],
+  ["3", "eight", "9", "8", "five"],
+  ["5"],
+  ["four", "two", "9", "seven", "4"],
+  ["one", "2", "two", "5", "four"],
+  ["one", "3", "5", "five", "4"],
+  ["four", "8", "four"],
+  ["5", "7", "seven", "eight"],
+  ["nine", "1", "four", "2", "two"],
+  ["six", "one", "seven", "3", "seven"],
+  ["five", "8", "1", "two"],
+  ["3", "four", "4", "eight"],
+  ["eight", "nine", "7"],
+  ["2", "8", "four", "six"],
+  ["2", "five", "eight", "nine", "nine", "four", "seven", "7"],
+  ["1", "8", "five", "7"],
+  ["3", "eight", "6", "3", "9"],
+  ["eight", "2", "2", "one"],
+  ["4"],
+  ["3", "4", "3", "9", "3", "four", "2"],
+  ["9", "three"],
+  ["two", "2", "five", "six"],
+  ["3", "eight", "two", "9", "1"],
+  ["4"],
+  ["four", "five", "7", "seven"],
+  ["7", "two"],
+  ["6", "one", "six", "9", "9", "2"],
+  ["four", "4", "one", "five", "6", "one", "eight"],
+  ["4", "nine", "4", "three", "3", "9"],
+  ["seven", "one", "2", "one"],
+  ["seven", "7", "nine", "eight", "8"],
+  ["3", "two", "3", "8", "8", "1"],
+  ["5", "two", "5", "four", "8", "eight", "five"],
+  ["seven", "seven", "2"],
+  ["1", "seven", "five", "seven"],
+  ["2", "five", "five", "six", "4", "3"],
+  ["eight", "one", "5", "9", "9", "5"],
+  ["one", "five", "3", "5"],
+  ["2"],
+  ["two", "eight", "8"],
+  ["1", "one", "8", "2", "4"],
+  ["1", "one", "4", "six", "six"],
+  ["five", "5", "nine", "2", "seven"],
+  ["4", "eight", "4", "two", "1", "9", "1"],
+  ["nine", "8", "one", "five", "5"],
+  ["nine", "9"],
+  ["1", "four", "one", "six", "five", "seven", "9", "5"],
+  ["7", "eight"],
+  ["2", "three", "nine", "eight"],
+  ["5", "8", "three", "4"],
+  ["9"],
+  ["seven", "1", "one", "9"],
+  ["8"],
+  ["3", "six", "1"],
+  ["three", "6", "7", "three", "8"],
+  ["nine", "7"],
+  ["5", "1"],
+  ["6", "2", "four", "1", "6", "three", "one", "eight"],
+  ["two", "8", "9", "nine"],
+  ["5", "six", "four"],
+  ["nine", "six", "2", "nine", "2", "8"],
+  ["seven", "4"],
+  ["7", "9", "four", "9"],
+  ["1", "seven"],
+  ["2", "four", "nine", "6", "1", "4"],
+  ["1", "6", "three", "eight", "two"],
+  ["five", "6", "8", "2"],
+  ["4", "5", "4", "5", "seven"],
+  ["two", "3", "two"],
+  ["6", "8", "5"],
+  ["nine", "6", "8", "seven", "two", "8"],
+  ["one", "three", "three", "7"],
+  ["4", "6", "two"],
+  ["six", "7", "4", "8", "two"],
+  ["2", "8", "4", "seven", "eight"],
+  ["5", "four", "3"],
+  ["six", "one", "1", "six", "four"],
+  ["3", "3", "two"],
+  ["four", "6", "1", "nine", "eight"],
+  ["eight", "5"],
+  ["four", "6", "7"],
+  ["5", "7", "six", "one", "1", "six"],
+  ["3", "2", "7", "three", "six", "eight"],
+  ["two", "1", "seven"],
+  ["three", "three", "seven", "2", "seven"],
+  ["nine", "3"],
+  ["4", "two", "9", "9", "3", "nine", "two"],
+  ["eight", "four", "nine", "7", "2", "one", "seven", "7"],
+  ["nine", "6", "2"],
+  ["4", "4", "8"],
+  ["6", "one", "five"],
+  ["6", "two", "two", "seven"],
+  ["eight", "4", "3", "eight"],
+  ["6", "seven", "3", "three", "four", "nine", "seven"],
+  ["three", "2", "2", "1", "four", "5", "six", "6"],
+  ["4", "3", "two"],
+  ["three", "5", "7", "6"],
+  ["3", "seven", "3"],
+  ["9", "3", "1", "three", "nine", "eight"],
+  ["4", "2", "7", "6"],
+  ["three", "five", "5"],
+  ["3", "2", "four", "6"],
+  ["4", "3", "8", "one", "six", "9"],
+  ["seven", "1"],
+  ["7", "six", "seven", "six"],
+  ["6", "six"],
+  ["5"],
+  ["five", "7", "five", "five"],
+  ["8", "seven", "5", "seven", "nine"],
+  ["seven", "eight", "one", "5", "3", "2"],
+  ["9", "seven", "7"],
+  ["5", "four"],
+  ["eight", "two", "3"],
+  ["six", "nine", "seven", "2", "4"],
+  ["two", "1"],
+  ["seven", "two", "4", "two", "5", "six"],
+  ["two", "6", "4", "eight", "7", "1"],
+  ["five", "9", "3", "2"],
+  ["2", "9", "4", "8", "two", "one"],
+  ["six", "five", "4", "four", "5"],
+  ["two", "8", "8", "3", "five", "4"],
+  ["7", "6"],
+  ["8", "1", "3", "six", "7"],
+  ["5", "seven"],
+  ["5", "four", "four"],
+  ["2"],
+  ["five", "5", "6", "nine", "one"],
+  ["3"],
+  ["3", "nine", "eight", "eight", "one", "eight"],
+  ["7", "three", "two", "five", "1", "6", "8"],
+  ["nine", "2"],
+  ["three", "one", "7"],
+  ["three", "4", "one", "8"],
+  ["8", "9", "8", "3", "seven", "eight", "9"],
+  ["4"],
+  ["8", "5", "1", "6", "three", "6", "four"],
+  ["7", "seven", "8"],
+  ["two", "six", "three", "nine", "6", "three"],
+  ["9"],
+  ["8", "9", "nine", "three", "six", "8"],
+  ["four", "8", "1"],
+  ["8", "6", "five", "nine", "2", "8"],
+  ["7", "eight", "two"],
+  ["four", "1", "7"],
+  ["four", "9", "two", "two", "nine", "3"],
+  ["1", "four"],
+  ["4", "eight"],
+  ["6", "two", "two", "six", "three"],
+  ["6", "three", "five", "5", "7"],
+  ["six", "four", "four", "9", "one", "five", "five"],
+  ["seven", "seven", "one", "five", "5", "three", "eight"],
+  ["5", "seven", "three", "9"],
+  ["one", "eight", "7", "1", "6"],
+  ["1", "2", "three"],
+  ["two", "8", "two", "four", "six", "four"],
+  ["8", "six", "2", "six"],
+  ["four", "9", "nine", "4"],
+  ["6", "3", "4", "four", "5"],
+  ["4", "5"],
+  ["8", "4", "8", "three", "3", "6"],
+  ["nine", "7", "six", "one", "two", "8", "six"],
+  ["two", "9", "6", "two", "one", "eight"],
+  ["eight", "two", "six", "eight", "seven", "4"],
+  ["1", "seven", "8", "4", "five", "6", "one"],
+  ["9", "7", "nine", "5", "6"],
+  ["4", "5", "3", "eight", "two"],
+  ["one", "five", "7", "eight", "two"],
+  ["one", "3", "six", "one", "4", "eight", "two"],
+  ["5", "three"],
+  ["two", "eight", "9"],
+  ["2", "four", "four", "five", "6"],
+  ["four", "three", "6"],
+  ["eight", "7", "7", "5"],
+  ["six", "seven", "nine", "3", "3", "four"],
+  ["two", "1", "one", "seven", "seven"],
+  ["8", "1", "one", "eight"],
+  ["eight", "7"],
+  ["three", "7"],
+  ["five", "seven", "8", "7"],
+  ["4", "8", "4", "six", "five"],
+  ["8", "one", "seven", "2"],
+  ["seven", "one", "one", "eight", "seven", "five", "7", "1"],
+  ["seven", "3", "5", "seven", "five", "7"],
+  ["eight", "five", "1", "2"],
+  ["two", "8", "4", "6"],
+  ["1"],
+  ["9"],
+  ["five", "four", "2", "7"],
+  ["9", "9", "3"],
+  ["2", "3", "six", "9", "4"],
+  ["6"],
+  ["9", "four", "7", "9"],
+  ["8", "2", "8"],
+  ["5", "6", "6", "one", "9", "six"],
+  ["8", "7", "4"],
+  ["3"],
+  ["seven", "9", "1", "eight", "six"],
+  ["2"],
+  ["9", "2", "four", "seven"],
+  ["seven", "two", "four", "5", "one", "four"],
+  ["6", "eight"],
+  ["one", "1", "4", "3", "1"],
+  ["1", "five", "4"],
+  ["two", "one", "8", "one"],
+  ["1", "three", "eight"],
+  ["9"],
+  ["9", "five", "7", "5"],
+  ["five", "7", "nine"],
+  ["7"],
+  ["eight", "eight", "4", "7", "four", "5"],
+  ["7", "1", "nine", "three", "one", "3"],
+  ["seven", "2"],
+  ["5", "2"],
+  ["1", "6", "seven"],
+  ["two", "one", "1"],
+  ["two", "five", "one", "3"],
+  ["7", "3"],
+  ["eight", "eight", "2"],
+  ["4", "8", "eight", "6"],
+  ["one", "1", "6", "6", "8", "one", "6"],
+  ["seven", "six", "8", "6", "4", "eight", "four", "3"],
+  ["seven", "4", "nine"],
+  ["four", "2", "4"],
+  ["four", "8", "nine"],
+  ["three", "4", "3", "5"],
+  ["8", "4", "6"],
+  ["3", "4", "seven"],
+  ["four", "1", "3"],
+  ["three", "6", "three"],
+  ["6", "8", "one", "9", "five", "1", "one", "2"],
+  ["one", "7", "one"],
+  ["three", "1", "3", "six", "4"],
+  ["four", "6", "6", "nine"],
+  ["3", "4", "three"],
+  ["1", "1", "four", "six", "six"],
+  ["nine", "one", "2", "seven", "4", "two", "nine", "six"],
+  ["nine", "6"],
+  ["six", "seven", "3"],
+  ["1", "five", "nine", "five", "six", "3"],
+  ["7", "eight", "seven", "6", "6"],
+  ["7", "five"],
+  ["5", "9", "three", "8"],
+  ["4", "6", "3"],
+  ["nine", "8", "5", "2", "6"],
+  ["6", "eight", "1", "seven", "5"],
+  ["seven", "9", "4", "2", "6"],
+  ["two", "4", "8", "seven", "3", "four", "5", "8", "four"],
+  ["four", "seven", "1", "5"],
+  ["1", "6", "1", "6"],
+  ["nine", "four", "6", "3"],
+  ["nine", "3"],
+  ["three", "seven", "two", "nine", "1", "eight"],
+  ["one", "9", "one", "8"],
+  ["eight", "1", "5", "1"],
+  ["six", "six", "three", "eight", "eight", "4", "two", "one"],
+  ["1", "7", "two", "4", "4"],
+  ["6", "seven", "eight", "1", "four", "three", "seven"],
+  ["4", "3", "8", "6", "five", "8"],
+  ["1", "three", "five", "4", "2", "6", "three", "8"],
+  ["six", "9", "two"],
+  ["three", "seven", "3", "four", "5", "three"],
+  ["five", "three", "3", "5", "seven"],
+  ["three", "three", "8", "8", "seven", "3", "9"],
+  ["eight", "one", "one", "9"],
+  ["eight", "6", "seven", "nine"],
+  ["7"],
+  ["six", "8", "6", "five", "5"],
+  ["4", "seven", "five", "five", "2"],
+  ["7"],
+  ["2", "8"],
+  ["3", "5", "four", "three", "seven", "3"],
+  ["four", "8"],
+  ["4", "six", "9", "8"],
+  ["five", "9", "four"],
+  ["four", "5", "one", "7", "nine", "four"],
+  ["4", "six", "six", "1", "3", "8", "seven"],
+  ["four", "seven", "seven", "eight", "5"],
+  ["one", "8"],
+  ["2", "1", "8", "3"],
+  ["six", "8", "five", "four", "three"],
+  ["two", "6"],
+  ["four", "5", "7", "2"],
+  ["6", "2"],
+  ["six", "six", "six", "1", "two", "4", "one", "eight"],
+  ["4", "2", "5", "two", "three", "4", "two"],
+  ["8", "nine", "eight", "5", "5", "eight", "4"],
+  ["seven", "4", "5"],
+  ["6", "5", "six", "5", "9", "4", "two", "five"],
+  ["4", "eight"],
+  ["5", "five", "5", "four"],
+  ["nine", "one", "8"],
+  ["five", "five", "three", "9", "9"],
+  ["2", "2"],
+  ["4"],
+  ["3", "eight", "7", "five", "3"],
+  ["5", "four", "7", "8"],
+  ["one", "8", "seven", "2", "2"],
+  ["1", "9", "seven"],
+  ["2", "five", "one"],
+  ["five", "4", "2", "4"],
+  ["1", "6"],
+  ["5", "one", "6"],
+  ["six", "3", "three", "three", "four", "eight", "three"],
+  ["4", "four", "two", "4"],
+  ["7", "2"],
+  ["three", "6", "7", "two", "six", "four", "4", "nine"],
+  ["three", "9"],
+  ["seven", "one", "3", "two", "5", "8"],
+  ["eight", "4", "9", "6", "five", "1", "four"],
+  ["1", "four"],
+  ["5", "7", "4"],
+  ["eight", "3", "three"],
+  ["2", "three", "2", "four", "nine", "seven"],
+  ["three", "three", "5", "one"],
+  ["8", "one", "two", "two", "seven", "9", "1"],
+  ["1", "four", "one", "six"],
+  ["4", "8", "one", "1", "4", "two"],
+  ["3", "3", "8", "1"],
+  ["3"],
+  ["three", "8", "6", "five"],
+  ["two", "six", "7", "six", "6", "nine"],
+  ["3", "four", "7", "six"],
+  ["5", "three"],
+  ["9", "6", "eight"],
+  ["three", "6", "three"],
+  ["6", "9", "seven", "5", "2"],
+  ["eight", "two", "6"],
+  ["two", "one", "1", "four"],
+  ["4", "five", "8", "6", "4"],
+  ["2", "1", "five", "eight", "three"],
+  ["two", "4", "two", "four", "eight", "4", "3"],
+  ["1", "eight", "5", "1"],
+  ["7", "1", "four"],
+  ["seven", "6"],
+  ["3", "1", "six", "four", "5"],
+  ["4", "eight", "eight", "2", "eight", "five", "eight", "two"],
+  ["nine", "2", "4", "six"],
+  ["3", "seven", "3", "9", "eight"],
+  ["four", "five", "4", "4", "six"],
+  ["4"],
+  ["one", "8"],
+  ["2"],
+  ["six", "1"],
+  ["seven", "8"],
+  ["five", "9"],
+  ["four", "5", "seven", "one"],
+  ["9", "one"],
+  ["8", "9", "six", "3", "two"],
+  ["six", "8", "7", "nine", "eight", "1"],
+  ["seven", "9", "two", "5"],
+  ["6", "2", "1", "six", "8"],
+  ["three", "2", "four", "7", "4", "five", "1"],
+  ["one", "7"],
+  ["5", "seven", "eight"],
+  ["four", "six", "6", "4"],
+  ["six", "2", "two", "two"],
+  ["nine", "7", "1", "seven", "4", "4"],
+  ["one", "3", "6"],
+  ["9", "seven", "9", "4", "seven"],
+  ["four", "seven", "seven", "1", "5", "nine", "1"],
+  ["1", "1", "5"],
+  ["three", "eight", "8"],
+  ["9", "1", "six"],
+  ["3", "7", "6", "three", "7"],
+  ["9", "3"],
+  ["two", "2", "one", "6", "one", "2", "4"],
+  ["seven", "four", "3", "three"],
+  ["9", "two", "two"],
+  ["seven", "eight", "5", "two", "one"],
+  ["9", "7", "six"],
+  ["four", "8", "eight", "one"],
+  ["6"],
+  ["8", "one"],
+  ["9", "three", "three", "8"],
+  ["seven", "1", "one", "nine", "3"],
+  ["4", "four", "3", "7", "five"],
+  ["nine", "9", "eight", "one", "8", "eight", "2"],
+  ["7", "1", "4"],
+  ["one", "2", "7"],
+  ["four", "9", "four"],
+  ["four", "4", "7", "4", "four"],
+  ["four", "7", "nine", "three", "3"],
+  ["two", "2"],
+  ["1", "8"],
+  ["4", "nine", "eight", "3"],
+  ["4", "3", "3", "1"],
+  ["7", "nine", "2", "nine", "6"],
+  ["9", "two"],
+  ["9", "7"],
+  ["5", "six", "3", "1", "5"],
+  ["four", "8", "4", "5"],
+  ["one", "eight", "3", "5", "4", "five", "one", "4"],
+  ["one", "7"],
+  ["4", "3", "three", "three", "5", "4", "four"],
+  ["nine", "two", "2", "one", "eight", "two"],
+  ["three", "four", "3", "8"],
+  ["five", "six", "eight", "2", "6", "three"],
+  ["one", "2", "four", "9", "three"],
+  ["8", "seven", "seven", "8", "three", "8", "8"],
+  ["7", "nine", "one", "3"],
+  ["4", "eight", "two", "1", "three", "one"],
+  ["one", "seven", "2", "six", "4"],
+  ["5"],
+  ["8", "one", "seven", "8", "6", "nine"],
+  ["three", "3", "seven", "6", "six", "two", "3", "4"],
+  ["6", "two", "8", "five", "eight"],
+  ["8", "9", "seven", "5", "two", "six", "6", "3"],
+  ["6", "3", "seven"],
+  ["four", "3", "three"],
+  ["eight", "6", "two", "eight"],
+  ["4", "2", "3", "3", "six"],
+  ["one", "four", "nine", "four", "8"],
+  ["1", "6", "eight", "2", "4"],
+  ["eight", "four", "eight", "9", "3", "7"],
+  ["5", "9", "5", "one", "eight"],
+  ["4", "4", "five"],
+  ["two", "2", "seven", "two"],
+  ["7", "five", "five", "one", "three", "five"],
+  ["7", "eight", "nine", "five"],
+  ["three", "six", "3"],
+  ["7", "1", "4", "9", "nine", "six"],
+  ["1", "3", "4", "9", "three"],
+  ["3", "one", "six", "6", "eight"],
+  ["five", "3", "4"],
+  ["6", "9"],
+  ["9", "three"],
+  ["four", "4", "7"],
+  ["9", "5", "one", "two", "nine"],
+  ["7", "2", "8", "four", "four", "four"],
+  ["four", "five", "2", "8"],
+  ["8", "1", "eight", "two", "eight"],
+  ["8"],
+  ["1", "six"],
+  ["7", "5"],
+  ["7", "7", "2"],
+  ["6", "three", "five", "two", "one"],
+  ["7"],
+  ["five", "four", "3"],
+  ["6", "8", "6", "eight"],
+  ["9", "4", "8", "8", "3"],
+  ["6", "one", "five"],
+  ["seven", "one", "six", "9"],
+  ["seven", "2", "2", "four", "9"],
+  ["3", "three"],
+  ["3", "4", "four", "six"],
+  ["five", "three", "five", "2"],
+  ["7", "seven", "1", "seven"],
+  ["4", "5", "8", "eight", "eight", "one"],
+  ["6", "3", "1", "two", "six"],
+  ["1", "4", "three"],
+  ["six", "4", "9", "two", "one"],
+  ["seven", "nine", "2", "6"],
+  ["7", "one", "6", "8"],
+  ["four", "4", "four", "six", "seven"],
+  ["3", "six", "seven"],
+  ["two", "three", "three", "5", "five"],
+  ["5", "eight", "3", "three", "9"],
+  ["7", "4", "two", "9", "5", "eight", "four"],
+  ["one", "7", "four", "1", "2"],
+  ["five", "four", "4", "six", "8", "seven"],
+  ["nine", "8", "five", "four", "7", "four", "7", "5"],
+  ["2"],
+  ["five", "four", "9", "5", "6", "6", "5"],
+  ["six", "three", "three", "6", "8"],
+  ["nine", "9"],
+  ["9", "7", "six", "5"],
+  ["7", "5", "six"],
+  ["seven", "nine", "3", "7", "7", "four", "seven", "6"],
+  ["9", "7", "eight", "nine"],
+  ["5", "2", "five", "one", "5"],
+  ["three", "7", "four"],
+  ["1"],
+  ["three", "eight", "four", "2"],
+  ["four", "2", "three", "4", "one"],
+  ["four", "9", "1"],
+  ["9", "one"],
+  ["one", "seven", "1", "seven"],
+  ["7"],
+  ["two", "three", "five", "4", "3"],
+  ["1", "9", "one", "2"],
+  ["five", "six", "4", "5", "eight", "seven"],
+  ["one", "four", "8", "8", "9", "7"],
+  ["3", "7", "one"],
+  ["3", "8", "9", "1", "seven", "4", "5"],
+  ["two", "one", "5", "1", "four", "1", "9"],
+  ["5", "5", "2"],
+  ["1", "7", "eight", "2", "3"],
+  ["two", "6", "5"],
+  ["nine", "3"],
+  ["1", "six"],
+  ["eight", "1"],
+  ["four", "7", "4", "five", "seven"],
+  ["9", "3", "1", "2", "eight", "nine", "1"],
+  ["six", "seven", "5", "seven", "2"],
+  ["9", "7", "seven", "nine", "five"],
+  ["eight", "8", "one", "five", "seven"],
+  ["9", "9", "two", "three"],
+  ["seven", "three", "5", "8"],
+  ["eight", "three", "3", "2"],
+  ["1", "4", "eight", "nine", "nine"],
+  ["6", "two", "two"],
+  ["5", "7", "3", "eight", "seven", "7", "8"],
+  ["9", "six", "1", "8"],
+  ["2", "seven", "8", "six", "1"],
+  ["one", "9", "three", "1", "2"],
+  ["six", "four", "6"],
+  ["two", "6"],
+  ["4", "9", "eight", "two", "one", "six", "eight", "eight"],
+  ["seven", "three", "eight", "9", "four", "eight"],
+  ["one", "one", "3", "8"],
+  ["9", "five", "one", "three", "two", "9"],
+  ["six", "six", "1", "5"],
+  ["7", "4", "6", "7"],
+  ["3"],
+  ["9", "six", "1", "6", "three", "7", "9", "three"],
+  ["3", "4", "9"],
+  ["6", "eight", "one", "seven", "eight", "four", "five"],
+  ["four", "five", "1", "1", "six"],
+  ["6", "8", "nine"],
+  ["seven", "5", "three", "nine"],
+  ["8"],
+  ["four", "7", "three", "9"],
+  ["four", "seven", "eight", "2", "9", "2", "eight", "one"],
+  ["5", "seven", "2", "1", "four"],
+  ["8", "8", "nine"],
+  ["6", "4"],
+  ["6", "7", "five", "4", "8"],
+  ["1", "3", "4"],
+  ["3"],
+  ["3", "five"],
+  ["9", "6", "3", "eight"],
+  ["6", "eight", "six", "one"],
+  ["5", "7", "1"],
+  ["one", "three", "4", "6", "six"],
+  ["nine", "9", "7", "8"],
+  ["7", "four"],
+  ["two", "9", "six", "2", "3"],
+  ["eight", "7", "two"],
+  ["2", "four", "8", "3"],
+  ["7", "four", "four", "four"],
+  ["six", "five", "7", "9"],
+  ["nine", "6", "4", "2", "seven", "seven", "9"],
+  ["4", "three", "8", "6"],
+  ["one", "eight", "two", "1", "one", "3"],
+  ["2", "6", "five", "5", "9"],
+  ["six", "3", "8", "five", "4"],
+  ["6"],
+  ["1", "seven", "seven", "3"],
+  ["8", "8"],
+  ["4", "nine", "5", "seven"],
+  ["2", "six", "7", "3", "3", "3"],
+  ["7", "8"],
+  ["three", "nine", "2", "5", "six"],
+  ["7", "four"],
+  ["one", "two", "9", "6", "9", "five", "three"],
+  ["2", "eight", "nine", "five"],
+  ["nine", "five", "4"],
+  ["two", "two", "9", "seven"],
+  ["8", "two", "nine", "3", "6", "8"],
+  ["2", "one", "1", "one"],
+  ["7", "nine", "4", "seven"],
+  ["three", "1", "1", "7"],
+  ["four", "three", "1", "2"],
+  ["1", "nine"],
+  ["7", "eight", "9", "6"],
+  ["six", "eight", "7", "6", "six", "five"],
+  ["5", "two", "one"],
+  ["three", "8", "6"],
+  ["4", "three", "5", "2", "eight", "5", "one", "eight"],
+  ["two", "one", "1"],
+  ["six", "9"],
+  ["7", "9", "eight", "nine", "3", "9"],
+  ["six", "six", "5", "one", "two", "3"],
+  ["7", "nine", "two", "6", "five"],
+  ["1", "6", "5", "9", "two", "7", "one", "five"],
+  ["7", "7", "3", "four", "eight"],
+  ["two", "4"],
+  ["2", "nine", "5", "seven", "9", "seven", "5", "2"],
+  ["8", "six", "seven"],
+  ["3", "3", "three"],
+  ["five", "3", "1", "three"],
+  ["eight", "nine", "three", "9", "5", "1"],
+  ["nine", "2", "5"],
+  ["eight", "7", "1", "three", "4"],
+  ["7", "nine", "2"],
+  ["six", "one", "7", "5"],
+  ["3", "1"],
+  ["2", "seven", "five"],
+  ["nine", "eight", "9"],
+  ["9", "seven"],
+  ["2", "1", "2"],
+  ["3"],
+  ["9", "six", "four", "five"],
+  ["3"],
+  ["9", "nine"],
+  ["7", "eight", "three"],
+  ["8", "4", "nine", "five", "4"],
+  ["four", "6", "3", "seven", "9"],
+  ["6", "4", "three"],
+  ["3", "6", "3", "one"],
+  ["9"],
+  ["three", "four", "5", "four"],
+  ["1", "4", "one", "2"],
+  ["8", "4"],
+  ["5", "two", "seven", "3", "three", "eight", "two"],
+  ["7", "4", "one"],
+  ["six", "4", "nine", "one", "six", "5", "three"],
+  ["one", "7", "6", "one"],
+  ["six", "three", "4"],
+  ["4", "9", "5", "1"],
+  ["7"],
+  ["three", "4", "6", "2", "2"],
+  ["7", "7", "three"],
+  ["six", "5", "2"],
+  ["1"],
+  ["one", "seven", "3", "7"],
+  ["three", "five", "4", "9"],
+  ["six", "one", "4"],
+  ["3", "6", "7", "nine", "nine"],
+  ["one", "6", "4"],
+  ["eight", "four", "7", "three", "seven"],
+  ["7", "1"],
+  ["two", "one", "three", "4", "2", "7", "nine", "4"],
+  ["two", "one", "2", "5", "8", "seven", "two", "two"],
+  ["7", "5", "six", "seven", "5", "9"],
+  ["7", "seven", "6", "7", "4"],
+  ["eight", "two", "6", "five", "7"],
+  ["3", "eight", "two"],
+  ["2", "2", "4", "3", "4", "five"],
+  ["9"],
+  ["3", "6", "four", "8", "six"],
+  ["6", "3", "three"],
+  ["5", "7", "4", "five", "two"],
+  ["two", "9"],
+  ["4", "4", "1"],
+  ["6", "7", "7", "seven", "8", "four", "two", "one"],
+  ["7", "2", "1", "6", "6", "5"],
+  ["3", "5", "5", "3", "5", "two"],
+  ["4", "one"],
+  ["four", "one", "five", "3", "two", "eight", "one"],
+  ["one", "8", "7", "4", "8", "5"],
+  ["one", "4", "3", "7", "nine"],
+  ["1", "1", "9", "one"],
+  ["5", "seven", "8", "7"],
+  ["seven", "1"],
+  ["1", "8", "eight", "five", "four"],
+  ["three", "9", "8"],
+  ["4", "one", "4", "5", "four"],
+  ["2", "6", "3", "two", "eight"],
+  ["7", "2", "9"],
+  ["eight", "1", "5"],
+  ["9", "six", "six", "five", "5"],
+  ["5", "4", "7", "1"],
+  ["eight", "3", "two"],
+  ["one", "6", "six"],
+  ["eight", "2", "one", "three", "6", "eight"],
+  ["5", "2", "two", "eight", "3", "9"],
+  ["8", "three", "four", "three"],
+  ["six", "1"],
+  ["nine", "7", "5", "7", "5", "three"],
+  ["4", "three"],
+  ["four", "two", "1", "four"],
+  ["3", "8"],
+  ["4", "eight", "5", "4"],
+  ["seven", "5"],
+  ["nine", "nine", "6", "1", "nine", "8"],
+  ["six", "one", "2", "nine", "six", "three", "eight"],
+  ["8", "9", "9", "1", "5", "1"],
+  ["4", "6", "nine", "one"],
+  ["7", "one", "2", "three"],
+  ["nine", "2", "four", "nine", "six", "two", "eight"],
+  ["5", "8", "3"],
+  ["3", "5", "1", "9", "six", "three"],
+  ["three", "nine", "9"],
+  ["2", "1", "9", "five", "two", "seven"],
+  ["8", "three"],
+  ["nine", "2", "4", "9", "nine", "8", "four"],
+  ["1", "6", "three"],
+  ["7", "six", "eight"],
+  ["two", "2", "4", "6", "7", "3", "2"],
+  ["4", "1", "three", "seven", "1", "four", "seven"],
+  ["2", "9", "6", "four", "7", "three"],
+  ["7"],
+  ["5", "5", "9"],
+  ["2", "5", "3", "3", "four"],
+  ["four", "1"],
+  ["5", "five"],
+  ["7", "eight"],
+  ["3", "5", "7", "6", "2", "3"],
+  ["1", "6", "9", "seven"],
+  ["9", "nine", "9"],
+  ["eight", "one", "3", "three", "eight", "two"],
+  ["one", "eight", "2"],
+  ["3", "4", "2", "nine"],
+  ["4", "7", "three"],
+  ["7", "four", "6"],
+  ["1", "eight", "nine"],
+  ["two", "9", "eight", "6", "1"],
+  ["6", "5", "4", "1", "four"],
+  ["four", "7"],
+  ["4", "seven"],
+  ["5", "5", "nine", "nine", "seven", "two", "9"],
+  ["1"],
+  ["9", "three", "9"],
+  ["2", "1", "1"],
+  ["4", "5", "one", "1", "four", "nine"],
+  ["5", "four", "4"],
+  ["4", "nine", "nine", "one", "9"],
+  ["3", "2"],
+  ["1", "eight", "5"],
+  ["9"],
+  ["6", "six", "5", "one"],
+  ["two", "five", "seven", "five", "six", "one", "nine", "5", "seven"],
+  ["four", "8", "5", "9", "seven"],
+  ["8"],
+  ["three", "2", "4"],
+  ["three", "four", "1"],
+  ["one", "4", "four"],
+  ["5", "one"],
+  ["seven", "nine", "7"],
+  ["6", "3", "seven"],
+  ["2", "seven", "3", "1", "7"],
+  ["5", "two", "six", "5", "five"],
+  ["eight", "one", "5", "five", "7", "seven", "5"],
+  ["five", "9", "8", "one", "five"],
+  ["eight", "8", "nine", "four"],
+  ["2", "4", "two", "five"],
+  ["seven", "3", "one", "four", "four"],
+  ["8", "eight", "8", "five"],
+  ["eight", "one", "two", "7", "nine"],
+  ["9", "4", "1", "six", "one"],
+  ["three", "3", "eight", "five", "six", "5"],
+  ["nine", "2", "nine", "seven"],
+  ["8", "6"],
+  ["5", "2", "8"],
+  ["5", "seven", "2", "9", "8"],
+  ["9", "3", "3", "five", "5", "4", "6"],
+  ["7", "6", "3", "4", "3"],
+  ["one", "3", "two", "4", "four", "4", "three"],
+  ["nine", "3", "three"],
+  ["9", "four", "eight", "8", "1"],
+  ["eight", "8", "five", "three"],
+  ["one", "9", "6", "six", "4", "5"],
+  ["four", "nine", "nine", "2", "2"],
+  ["eight", "two", "three", "5", "3", "nine"],
+  ["seven", "5", "one", "4", "one", "7", "nine", "five", "3"],
+  ["2", "six", "3"],
+  ["eight", "6", "six", "one", "eight", "nine"],
+  ["5"],
+  ["six", "7", "six", "one"],
+  ["two", "one", "six", "7", "3", "three"],
+  ["6", "four", "seven"],
+  ["4", "1", "four", "4", "four", "three"],
+  ["9", "two", "8", "6"],
+  ["4", "3", "6", "seven", "7"],
+  ["6", "two"],
+  ["3", "9"],
+  ["four", "two", "4", "two", "nine"],
+  ["three", "2", "four", "8"],
+  ["3", "4", "4", "three"],
+  ["2", "9", "9", "three", "6"],
+  ["two", "8", "3"],
+  ["one", "9", "8", "2"],
+  ["3", "6", "7"],
+  ["seven", "6", "nine", "nine", "9", "1"],
+  ["one", "3", "8"],
+  ["seven", "three", "5", "one"],
+  ["eight", "9", "9", "one", "8", "nine"],
+  ["3", "7", "1"],
+  ["9", "nine", "three", "1", "5"],
+  ["three", "9"],
+  ["9"],
+  ["five", "5", "8", "2"],
+  ["5", "8", "nine", "six"],
+  ["4"],
+  ["6", "eight"],
+  ["3", "one", "three"],
+  ["4", "two", "3"],
+  ["two", "4"],
+  ["9", "three", "6"],
+  ["six", "1", "7", "9", "8", "nine", "eight"],
+  ["9", "nine", "3", "five", "four", "five", "3", "four"],
+  ["one", "7", "seven", "one", "7", "8", "nine", "two"],
+  ["9", "7", "3", "eight", "9", "seven", "two"],
+  ["eight", "two", "three", "three", "6", "three", "eight"],
+  ["five", "9", "4"],
+  ["five", "8", "eight", "two"],
+  ["2", "seven", "five", "6"],
+  ["3"],
+  ["1", "2", "6", "one", "3"],
+  ["9", "3"],
+  ["nine", "8", "three", "eight", "7", "eight"],
+  ["5", "2", "7", "4", "6", "3", "6"],
+  ["eight", "five", "9", "three"],
+  ["9", "eight", "4", "six", "two", "three"],
+  ["eight", "two", "five", "3", "four", "two"],
+  ["one", "6", "1", "three"],
+  ["1", "9", "5", "8", "1"],
+  ["six", "2", "1", "four", "six", "8"],
+  ["6", "2", "7", "8", "eight", "3", "three"],
+  ["8", "3", "eight", "three"],
+  ["4", "two", "7"],
+  ["7"],
+  ["4", "6", "8", "nine"],
+  ["9", "four", "three"],
+  ["one", "three", "seven", "7"]
+]
+[88, 55, 86, 79, 16, 32, 14, 49, 87, 68, 71, 33, 73, 39, 42, 58, 62, 35, 65, 45,
+ 46, 87, 52, 96, 34, 22, 94, 11, 57, 81, 87, 97, 39, 79, 21, 78, 27, 97, 42, 29,
+ 18, 85, 85, 37, 99, 66, 98, 95, 25, 14, 81, 35, 94, 51, 81, 84, 55, 72, 44, 94,
+ 44, 44, 41, 74, 69, 11, 79, 48, 39, 67, 12, 34, 67, 84, 41, 81, 89, 74, 16, 95,
+ 51, 57, 48, 35, 59, 74, 91, 32, 42, 98, 59, 36, 65, 41, 89, 31, 34, 44, 65, 41,
+ 24, 22, 17, 66, 55, 23, 64, 31, 98, 27, 85, 36, 82, 67, 23, 64, 82, 68, 62, 69,
+ 16, 57, 82, 11, 54, 33, 44, 81, 69, 83, 99, 42, 33, 26, 24, 81, 37, 55, 13, 62,
+ 19, 34, 52, 11, 89, 26, 78, 47, 44, 92, 55, 57, 77, 79, 36, 83, 35, 67, 89, 95,
+ 64, 48, 25, 84, 95, 77, 99, 82, 42, 82, 65, 13, 43, 47, 74, 94, 41, 88, 32, 69,
+ 83, 33, 62, 11, 22, 75, 42, 38, 61, 88, 94, 78, 57, 82, 64, 35, 55, 44, 14, 14,
+ 44, 58, 92, 67, 52, 38, 87, 26, 27, 17, 39, 81, 44, 32, 93, 26, 31, 44, 47, 72,
+ 62, 48, 49, 71, 78, 31, 55, 72, 17, 23, 85, 15, 22, 28, 14, 16, 57, 41, 95, 99,
+ 15, 78, 28, 54, 99, 79, 88, 31, 38, 97, 51, 68, 29, 54, 98, 74, 79, 17, 24, 12,
+ 52, 47, 22, 65, 98, 17, 42, 62, 28, 53, 64, 32, 48, 85, 47, 56, 38, 27, 37, 93,
+ 42, 87, 92, 48, 65, 67, 88, 67, 36, 42, 36, 33, 98, 46, 35, 36, 49, 71, 76, 66,
+ 55, 55, 89, 72, 97, 54, 83, 64, 21, 76, 21, 52, 21, 65, 24, 76, 87, 57, 54, 22,
+ 51, 33, 38, 78, 92, 37, 38, 89, 44, 84, 78, 23, 99, 88, 41, 88, 72, 47, 43, 14,
+ 48, 63, 67, 65, 78, 59, 16, 13, 24, 86, 44, 65, 45, 86, 96, 28, 84, 11, 96, 42,
+ 12, 12, 53, 29, 26, 46, 85, 64, 27, 88, 87, 37, 57, 45, 82, 71, 77, 82, 26, 11,
+ 99, 57, 93, 24, 66, 99, 88, 56, 84, 33, 76, 22, 97, 74, 68, 11, 14, 21, 18, 99,
+ 95, 59, 77, 85, 73, 72, 52, 17, 21, 23, 73, 82, 46, 16, 73, 79, 44, 49, 35, 86,
+ 37, 43, 33, 62, 11, 34, 49, 33, 16, 96, 96, 63, 13, 76, 75, 58, 43, 96, 65, 76,
+ 24, 45, 16, 93, 93, 38, 18, 81, 61, 14, 67, 48, 18, 62, 33, 57, 39, 89, 89, 77,
+ 65, 42, 77, 28, 33, 48, 48, 54, 44, 47, 45, 18, 23, 63, 26, 42, 62, 68, 42, 84,
+ 75, 65, 48, 54, 98, 59, 22, 44, 33, 58, 12, 17, 21, 54, 16, 56, 63, 44, 72, 39,
+ 39, 78, 84, 14, 54, 83, 27, 31, 81, 16, 42, 31, 33, 35, 29, 36, 53, 98, 33, 62,
+ 86, 24, 44, 23, 23, 11, 74, 76, 35, 42, 96, 38, 46, 44, 18, 22, 61, 78, 59, 41,
+ 91, 82, 61, 75, 68, 31, 17, 58, 44, 62, 94, 16, 97, 41, 15, 38, 96, 37, 93, 24,
+ 73, 92, 71, 96, 41, 66, 81, 98, 73, 45, 92, 74, 17, 44, 44, 43, 22, 18, 43, 41,
+ 76, 92, 97, 55, 45, 14, 17, 44, 92, 38, 53, 13, 88, 73, 41, 14, 55, 89, 34, 68,
+ 83, 67, 43, 88, 46, 18, 14, 87, 58, 45, 22, 75, 75, 33, 76, 13, 38, 54, 69, 93,
+ 47, 99, 74, 48, 88, 88, 16, 75, 72, 61, 77, 53, 68, 93, 65, 79, 79, 33, 36, 52,
+ 77, 41, 66, 13, 61, 76, 78, 47, 37, 25, 59, 74, 12, 57, 95, 22, 55, 68, 99, 95,
+ 76, 76, 99, 55, 34, 11, 32, 41, 41, 91, 17, 77, 23, 12, 57, 17, 31, 35, 29, 52,
+ 13, 25, 93, 16, 81, 47, 91, 62, 95, 87, 93, 78, 82, 19, 62, 58, 98, 21, 12, 66,
+ 26, 48, 78, 18, 99, 65, 77, 33, 93, 39, 65, 46, 69, 79, 88, 49, 41, 54, 89, 64,
+ 68, 14, 33, 35, 98, 61, 51, 16, 98, 74, 23, 82, 23, 74, 69, 99, 46, 13, 29, 64,
+ 66, 13, 88, 47, 23, 78, 36, 74, 13, 25, 94, 27, 88, 21, 77, 37, 42, 19, 76, 65,
+ 51, 36, 48, 21, 69, 79, 63, 75, 15, 78, 24, 22, 87, 33, 53, 81, 95, 84, 72, 65,
+ 31, 25, 99, 97, 22, 33, 95, 33, 99, 73, 84, 49, 63, 31, 99, 34, 12, 84, 52, 71,
+ 63, 11, 64, 41, 77, 32, 73, 62, 11, 17, 39, 64, 39, 14, 87, 71, 24, 22, 79, 74,
+ 87, 32, 25, 99, 36, 63, 52, 29, 41, 61, 75, 32, 41, 41, 15, 19, 11, 57, 71, 14,
+ 38, 44, 28, 79, 85, 95, 51, 82, 16, 88, 59, 83, 61, 93, 43, 44, 38, 44, 75, 98,
+ 68, 81, 41, 73, 98, 53, 33, 39, 27, 83, 94, 13, 78, 22, 47, 23, 77, 59, 24, 41,
+ 55, 78, 33, 17, 99, 82, 12, 39, 43, 76, 19, 21, 64, 47, 47, 59, 11, 99, 21, 49,
+ 54, 49, 32, 15, 99, 61, 27, 47, 88, 34, 31, 14, 51, 77, 67, 27, 55, 85, 55, 84,
+ 25, 74, 85, 89, 91, 35, 97, 86, 58, 58, 96, 73, 13, 93, 91, 83, 15, 42, 89, 73,
+ 23, 89, 55, 61, 23, 67, 43, 96, 47, 62, 39, 49, 38, 33, 26, 23, 12, 37, 71, 18,
+ 71, 89, 31, 95, 39, 99, 52, 56, 44, 68, 33, 43, 24, 96, 68, 94, 12, 92, 88, 54,
+ 52, 26, 33, 13, 93, 98, 56, 83, 93, 82, 13, 11, 68, 63, 83, 47, 77, 49, 93, 17]
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+54985
+```
+
+51828 - too low! (single digits on a row)
+
+54978 - too low! (if only one digit on a row, use it twice)
+
+<!-- livebook:{"break_markdown":true} -->
+
+**54985 - success!**
+
+The crux of the issue was two "word" digits sharing a character, as in "twone", which should parse as ["two", "one"]. My first pass would only parse the "two".
