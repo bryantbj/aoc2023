@@ -1,0 +1,280 @@
+# AdventOfCode 2023 - Day 3
+
+## Part A
+
+Phew. This was a doozy! There's probably a much simpler way to do this, but instead of refactoring, I want to go play a game. So I'm going to leave this as evidence of the journey!
+
+I'm nervous about the days to come! So far, only Day 2 was simple.
+
+```elixir
+defmodule Input do
+  # 4361
+  def input_example_a do
+    """
+    467..114..
+    ...*......
+    ..35..633.
+    ......#...
+    617*......
+    .....+.58.
+    ..592.....
+    ......755.
+    ...$.*....
+    .664.598..
+    """
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+  end
+
+  # 467835
+  def input_example_b do
+    """
+    467..114..
+    ...*......
+    ..35..633.
+    ......#...
+    617*......
+    .....+.58.
+    ..592.....
+    ......755.
+    ...$.*....
+    .664.598..
+    """
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+  end
+
+  def input_puzzle do
+    File.stream!("#{__DIR__}/3.txt")
+    |> Stream.map(&String.trim/1)
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Input, <<70, 79, 82, 49, 0, 0, 9, ...>>, {:input_puzzle, 0}}
+```
+
+```elixir
+defmodule A do
+  def parse_grid(enum_of_lines, opts \\ [return: :index]) do
+    numbers =
+      for {line, idx} <- Enum.with_index(enum_of_lines, 0),
+          into: %{},
+          do: {idx, List.flatten(Regex.scan(~r/\d+/, line, return: opts[:return]))}
+
+    symbols =
+      for {line, idx} <- Enum.with_index(enum_of_lines, 0),
+          into: numbers,
+          do: {idx, List.flatten(Regex.scan(~r/[^\d\.]/, line, return: opts[:return]))}
+
+    %{numbers: numbers, symbols: symbols}
+  end
+
+  def possibilities({row, col, len}) do
+    current = {row, (col - 1)..(col + len)}
+    previous = {row - 1, (col - 1)..(col + len)}
+    next = {row + 1, (col - 1)..(col + len)}
+
+    [current, previous, next]
+  end
+
+  def solve(input \\ Input.input_example_a()) do
+    %{numbers: numbers, symbols: symbols} = parse_grid(input)
+
+    # flatten numbers
+    numbers =
+      for {row, list} <- numbers, {col, len} <- list, into: %{} do
+        {{row, col, len}, possibilities({row, col, len})}
+      end
+
+    for {pos, possibilities} <- numbers, into: %{} do
+      # for each list of possibilities, check if a symbol exists in that range
+      {pos,
+       Enum.map(possibilities, fn {row, range} ->
+         case symbols[row] do
+           # out of bounds
+           nil -> false
+           # no symbols in row
+           [] -> false
+           n -> Enum.any?(n, fn {idx, _} -> idx in range end)
+         end
+       end)}
+    end
+    # keep only those positions which had a symbol adjacent
+    |> Stream.filter(fn {_pos, booleans} -> true in booleans end)
+    # get the original number at the pos
+    |> Stream.map(fn {{row, col, len}, _} ->
+      Enum.at(input, row) |> String.slice(col, len) |> String.to_integer()
+    end)
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, A, <<70, 79, 82, 49, 0, 0, 24, ...>>, {:solve, 1}}
+```
+
+Test input:
+
+```elixir
+A.solve(Input.input_example_a())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+4361
+```
+
+Puzzle input:
+
+<!-- livebook:{"break_markdown":true} -->
+
+524857 - too high
+
+```elixir
+# A.parse_grid(Input.input_puzzle(), return: :binary)
+A.solve(Input.input_puzzle())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+522726
+```
+
+522726 - correct!
+
+Oops! I was counting "\n" as symbols. 🤦‍♂️
+
+## Part 2
+
+```elixir
+defmodule B do
+  def parse_grid(enum_of_lines, opts \\ [return: :index]) do
+    # get pos data for numbers
+    numbers =
+      for {line, idx} <- Enum.with_index(enum_of_lines, 0),
+          into: %{},
+          do: {idx, List.flatten(Regex.scan(~r/\d+/, line, return: opts[:return]))}
+
+    # get pos data for symbols
+    symbols =
+      for {line, idx} <- Enum.with_index(enum_of_lines, 0),
+          into: numbers,
+          do: {idx, List.flatten(Regex.scan(~r/\*/, line, return: opts[:return]))}
+
+    %{numbers: numbers, symbols: symbols}
+  end
+
+  # for a give pos datum, determine the range of adjacent possibilities
+  def possibilities({row, col, len}) do
+    current = {row, (col - 1)..(col + len)}
+    previous = {row - 1, (col - 1)..(col + len)}
+    next = {row + 1, (col - 1)..(col + len)}
+
+    [current, previous, next]
+  end
+
+  # does a given pos datum have exactly 2 adjacent numbers?
+  def has_exactly_two_adjacent_numbers?({_symbol_pos, map}) do
+    adjacents =
+      map
+      |> Map.values()
+      |> Enum.filter(& &1)
+      |> length()
+
+    adjacents == 2
+  end
+
+  # for each symbol, determine its possible adjacent numbers, then see if a number exists there
+  def analyze_gears(%{symbols: symbols, numbers: numbers}) do
+    for {pos, possibilities} <- symbols, into: %{} do
+      # for each list of possibilities, check if a number exists at that pos
+      {
+        pos,
+        for {row, range} <- possibilities, n <- numbers[row], {col, len} = n, reduce: %{} do
+          acc ->
+            result = Enum.any?(range, fn i -> i in col..(col + len - 1) end)
+            Map.put(acc, {row, col, len}, result)
+        end
+      }
+    end
+  end
+
+  # filter out leftover `false` values. we don't need to count them
+  def reject_false({symbol_pos, map}) do
+    {symbol_pos, Enum.reject(map, fn {_pos, bool} -> !bool end)}
+  end
+
+  # for each pos, iterate over its number data and return number
+  # that exists at the position.
+  #
+  # then find the product of each 2 numbers
+  def calculate_all_gear_ratios(list, input) do
+    list
+    |> Enum.map(fn {_symbol_pos, list_of_pos} ->
+      Enum.map(list_of_pos, fn {{row, col, len}, _bool} ->
+        input
+        |> Enum.at(row)
+        |> String.slice(col, len)
+        |> String.to_integer()
+      end)
+      |> Enum.product()
+    end)
+  end
+
+  def solve(input \\ Input.input_example_b()) do
+    %{numbers: numbers, symbols: symbols} = parse_grid(input)
+
+    # flatten symbols
+    symbols =
+      for {row, list} <- symbols, {col, len} <- list, into: %{} do
+        {{row, col, len}, possibilities({row, col, len})}
+      end
+
+    %{numbers: numbers, symbols: symbols}
+    |> analyze_gears()
+    |> Enum.filter(&has_exactly_two_adjacent_numbers?/1)
+    |> Enum.map(&reject_false/1)
+    |> calculate_all_gear_ratios(input)
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, B, <<70, 79, 82, 49, 0, 0, 32, ...>>, {:solve, 1}}
+```
+
+Test input:
+
+```elixir
+B.solve()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+467835
+```
+
+Puzzle input:
+
+```elixir
+B.solve(Input.input_puzzle())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+81721933
+```
