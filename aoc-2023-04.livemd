@@ -1,0 +1,277 @@
+# AdventOfCode 2023 - Day 4
+
+## Input
+
+```elixir
+defmodule Input do
+  # 13 points
+  def input_example_a() do
+    """
+    Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+    Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+    Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+    Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+    Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+    Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
+    """
+    |> String.trim()
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+  end
+
+  # 30 > number of scratch cards won
+  def input_example_b() do
+    """
+    Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+    Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+    Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+    Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+    Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+    Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
+    """
+    |> String.trim()
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+  end
+
+  def input_puzzle() do
+    File.stream!("#{__DIR__}\\4.txt")
+    |> Stream.map(&String.trim/1)
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, Input, <<70, 79, 82, 49, 0, 0, 10, ...>>, {:input_puzzle, 0}}
+```
+
+## Part 1
+
+```elixir
+defmodule A do
+  def parse_numbers(str_of_numbers) do
+    String.split(str_of_numbers)
+    |> Enum.map(&String.to_integer/1)
+  end
+
+  def find_matches(%{numbers: numbers, winning: winning} = card) do
+    numbers
+    |> MapSet.intersection(winning)
+    |> then(&Map.put(card, :matches, &1))
+  end
+
+  def calculate_card_score(%{matches: matches} = card) do
+    case MapSet.size(matches) do
+      0 -> 0
+      1 -> 1
+      n -> 1..(n - 1) |> Enum.reduce(1, fn _el, acc -> acc * 2 end)
+    end
+    |> then(&Map.put(card, :score, &1))
+  end
+
+  def parse_card(card) do
+    [id, numbers] = Regex.split(~r/:\s+/, card)
+    [_, id] = Regex.split(~r/\s+/, id)
+
+    [card_numbers, winning_numbers] =
+      String.split(numbers, " | ")
+      |> Enum.map(&parse_numbers/1)
+
+    %{id: id, winning: MapSet.new(winning_numbers), numbers: MapSet.new(card_numbers)}
+  end
+
+  def solve(input \\ Input.input_example_a()) do
+    input
+    |> Stream.map(&parse_card/1)
+    |> Stream.map(&find_matches/1)
+    |> Stream.map(&calculate_card_score/1)
+    |> Stream.map(& &1.score)
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, A, <<70, 79, 82, 49, 0, 0, 18, ...>>, {:solve, 1}}
+```
+
+Test input:
+
+```elixir
+A.solve()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+13
+```
+
+Puzzle input:
+
+<!-- livebook:{"break_markdown":true} -->
+
+1830 - too low!
+
+<!-- livebook:{"break_markdown":true} -->
+
+23678 - correct! (doubling wasn't quite correct; zeroes weren't quite correct)
+
+```elixir
+A.solve(Input.input_puzzle())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+23678
+```
+
+## Part 2
+
+```elixir
+defmodule B do
+  def parse_numbers(str_of_numbers) do
+    String.split(str_of_numbers)
+    |> Enum.map(&String.to_integer/1)
+  end
+
+  def find_matches(%{numbers: numbers, winning: winning} = card) do
+    numbers
+    |> MapSet.intersection(winning)
+    |> then(&Map.put(card, :matches, MapSet.size(&1)))
+    |> then(&Map.put(&1, :winner?, &1.matches > 0))
+    |> Map.delete(:numbers)
+    |> Map.delete(:winning)
+  end
+
+  def determine_copies(%{matches: matches} = card) do
+    case matches do
+      0 ->
+        card
+
+      n ->
+        copy_range = (card.id + 1)..(card.id + n)
+        Map.put(card, :copies, copy_range)
+    end
+  end
+
+  # each card should have already been counted once by 
+  # this point, so only count the copies
+  def tally_one_card(current_id, map_of_cards) do
+    card = map_of_cards[current_id]
+
+    # tally each copy
+    case card[:copies] do
+      nil ->
+        map_of_cards
+
+      [] ->
+        map_of_cards
+
+      copies ->
+        copies
+        # start                           1 = 1, 2 = 1, 3 = 1, 4 = 1, 5 = 1,  6 = 1
+        # 1 -> 2..5 - increases 2-5 by 1. 1 = 1, 2 = 2, 3 = 2, 4 = 2, 5 = 2,  6 = 1
+        # 2 -> 3..4 - increases 3-4 by 2. 1 = 1, 2 = 2, 3 = 4, 4 = 4, 5 = 2,  6 = 1
+        # 3 -> 4..5 - increases 4-5 by 4. 1 = 1, 2 = 2, 3 = 4, 4 = 8, 5 = 6,  6 = 1
+        # 4 -> 5..5 - increases 5   by 8. 1 = 1, 2 = 2, 3 = 4, 4 = 8, 5 = 14, 6 = 1
+        # 5 -> nil                        1 = 1, 2 = 2, 3 = 4, 4 = 8, 5 = 14, 6 = 1
+        # 6 -> nil                        1 = 1, 2 = 2, 3 = 4, 4 = 8, 5 = 14, 6 = 1
+        |> Enum.reduce(map_of_cards, fn id, acc ->
+          update_in(acc, [:total, id], fn
+            nil -> acc.total[current_id]
+            n -> n + acc.total[current_id]
+          end)
+        end)
+    end
+  end
+
+  def parse_card(card) do
+    [id, numbers] = Regex.split(~r/:\s+/, card)
+    [_, id] = Regex.split(~r/\s+/, id)
+
+    [card_numbers, winning_numbers] =
+      String.split(numbers, " | ")
+      |> Enum.map(&parse_numbers/1)
+
+    %{
+      id: String.to_integer(id),
+      winning: MapSet.new(winning_numbers),
+      numbers: MapSet.new(card_numbers)
+    }
+  end
+
+  # id+1..id+score
+  def solve(input \\ Input.input_example_b()) do
+    map =
+      input
+      |> Stream.map(&parse_card/1)
+      |> Stream.map(&find_matches/1)
+      |> Stream.map(&determine_copies/1)
+      |> Enum.reduce(%{}, &Map.put(&2, &1.id, &1))
+      |> Map.merge(%{total: %{}})
+
+    # count each card once to begin with
+    map =
+      for i <- Map.keys(map), is_integer(i), reduce: map do
+        acc -> put_in(acc, [:total, i], 1)
+      end
+
+    # tally each card and sum the results
+    map
+    # maintaining card order is important,
+    # hence the sorting of keys on the
+    # next three lines
+    |> Map.reject(fn {k, _} -> !is_integer(k) end)
+    |> Map.keys()
+    |> Enum.sort()
+    |> Enum.reduce(map, &tally_one_card/2)
+    |> Map.get(:total)
+    |> Map.values()
+    |> Enum.sum()
+  end
+end
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+{:module, B, <<70, 79, 82, 49, 0, 0, 27, ...>>, {:solve, 1}}
+```
+
+Test input:
+
+```elixir
+B.solve()
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+30
+```
+
+Puzzle input:
+
+<!-- livebook:{"break_markdown":true} -->
+
+7621 - too low!
+
+<!-- livebook:{"break_markdown":true} -->
+
+15455663 - correct! The crux here was maintaining sort order on the cards, which I didn't realize _wasn't_ happening for quite some time. 👍
+
+```elixir
+B.solve(Input.input_puzzle())
+```
+
+<!-- livebook:{"output":true} -->
+
+```
+15455663
+```
